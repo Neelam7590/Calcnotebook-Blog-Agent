@@ -1,4 +1,15 @@
 {
-  "posts": [],
-  "used_image_ids": []
+  "posts": [
+    {
+      "date": "2026-10-08",
+      "calculator": "Percentage Calculator",
+      "topic": "Step-by-Step Guide to Calculating GST on Your Purchases in India Using a Percentage Calculator",
+      "title": "Calculate GST on Purchases with a Percentage Calculator",
+      "mode": "draft",
+      "url": "https://calcnotebook.blogspot.com/"
+    }
+  ],
+  "used_image_ids": [
+    385506
+  ]
 }
