@@ -1,0 +1,17 @@
+{
+  "site_url": "https://calcnotebook.vercel.app",
+  "site_name": "CalcNotebook",
+  "language": "English",
+  "min_words": 600,
+  "max_words": 800,
+  "groq_model": "openai/gpt-oss-120b",
+  "calculators": {
+    "monday":    { "name": "EMI Calculator",        "url": "/emi-calculator" },
+    "tuesday":   { "name": "GST Calculator",        "url": "/gst-calculator" },
+    "wednesday": { "name": "BMI Calculator",        "url": "/bmi-calculator" },
+    "thursday":  { "name": "Percentage Calculator", "url": "/percentage-calculator" },
+    "friday":    { "name": "Age Calculator",        "url": "/age-calculator" },
+    "saturday":  { "name": "CGPA Calculator",       "url": "/cgpa-calculator" },
+    "sunday":    { "name": "Stamp Duty Calculator", "url": "/stamp-duty-calculator" }
+  }
+}
