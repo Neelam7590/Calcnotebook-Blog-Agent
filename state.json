@@ -1,4 +1,15 @@
 {
-  "posts": [],
-  "used_image_ids": []
+  "posts": [
+    {
+      "date": "2026-10-08",
+      "calculator": "Percentage Calculator",
+      "topic": "How to calculate the final price after a discount and GST in India: a step-by-step guide",
+      "title": "How to Calculate Discount and GST – Simple Step-by-Step Guide",
+      "mode": "publish",
+      "url": "https://calcnotebook.blogspot.com/2026/10/how-to-calculate-discount-and-gst.html"
+    }
+  ],
+  "used_image_ids": [
+    385506
+  ]
 }
