@@ -1,48 +1,104 @@
-# CalcNotebook Blogger Agent
+# CalcNotebook Blog Agent
 
-Roz 1 blog, har din alag calculator (weekly rotation):
-Mon EMI, Tue GST, Wed BMI, Thu Percentage, Fri Age, Sat CGPA, Sun Stamp Duty.
-Blog mein image + CalcNotebook ka backlink automatically lagta hai.
+An automated blogging agent that writes and publishes one calculator-focused blog post every day to [CalcNotebook Blog](https://calcnotebookblog.blogspot.com) on Blogger. Each post comes with an image, worked examples with accurate numbers, and a backlink to the CalcNotebook calculator website.
 
-## Setup (local, VS Code)
-```powershell
+It runs fully on its own using GitHub Actions, so no manual posting is needed.
+
+## Features
+
+- **Daily auto-publishing** to Blogger through the Blogger API v3
+- **Weekly calculator rotation**, so every day covers a different topic:
+
+  | Day | Calculator |
+  |-----|------------|
+  | Monday | EMI |
+  | Tuesday | GST |
+  | Wednesday | BMI |
+  | Thursday | Percentage |
+  | Friday | Age |
+  | Saturday | CGPA |
+  | Sunday | Stamp Duty |
+
+- **Accurate numbers**: all formulas and example calculations are computed in Python. The LLM only writes the explanatory paragraphs, so results are never made up.
+- **Images added automatically** from Pixabay, stored in this repo and served through the jsDelivr CDN
+- **Automatic backlinks** to the CalcNotebook calculator website in every post
+- **Optional topic research** using SerpApi
+- **Dry-run, draft and publish modes** for safe testing before going live
+- **State tracking** (`state.json`) to avoid duplicate posts
+
+## Tech Stack
+
+- Python
+- Groq API (LLM for paragraph writing)
+- Blogger API v3 with Google OAuth
+- Pixabay API (images)
+- SerpApi (optional research)
+- GitHub Actions (scheduling and automation)
+- jsDelivr (image CDN)
+
+## Project Structure
+
+```
+.
+├── .github/workflows/   # GitHub Actions workflow (daily schedule)
+├── scripts/             # Agent code (agent.py, get_refresh_token.py, ...)
+├── images/              # Images used in published posts
+├── config.json          # Agent settings (e.g. Groq model)
+├── state.json           # Tracks what has already been posted
+├── requirements.txt     # Python dependencies
+└── AGENTS.md            # Notes for AI coding agents
+```
+
+## Setup (Local)
+
+```bash
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate          # Windows
 pip install -r requirements.txt
-copy .env.example .env      # phir .env mein keys bharo
+copy .env.example .env         # then fill in your keys
 ```
 
-### Keys kahan se aayengi
-| Key | Kahan se |
-|---|---|
-| GROQ_API_KEY | console.groq.com |
-| SERPAPI_KEY | serpapi.com (optional, topic research) |
-| PIXABAY_API_KEY | pixabay.com/api/docs (free account, key wahin dikhti hai) |
-| IMAGE_REPO | apna GitHub repo, jaise `Neelam7590/calcnotebook-blog-agent` (repo PUBLIC rakho, warna image blog mein nahi dikhegi) |
-| BLOG_ID | Blogger dashboard URL mein `blogID=...` |
-| GOOGLE_CLIENT_ID / SECRET | Google Cloud Console -> Credentials -> OAuth client (Desktop app) |
-| GOOGLE_REFRESH_TOKEN | `python scripts/get_refresh_token.py` |
+### Environment variables
 
-Google Cloud mein **Blogger API v3 enable** karna zaruri hai, aur OAuth consent screen mein
-apna Gmail **Test user** mein add karo.
+| Key | Where to get it |
+|-----|-----------------|
+| `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) |
+| `SERPAPI_KEY` | [serpapi.com](https://serpapi.com) (optional) |
+| `PIXABAY_API_KEY` | [pixabay.com/api/docs](https://pixabay.com/api/docs/) |
+| `IMAGE_REPO` | Your GitHub repo, e.g. `Neelam7590/Calcnotebook-Blog-Agent` (**must be public**, otherwise images will not load on the blog) |
+| `BLOG_ID` | In the Blogger dashboard URL (`blogID=...`) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Cloud Console, Credentials, OAuth client (Desktop app) |
+| `GOOGLE_REFRESH_TOKEN` | Run `python scripts/get_refresh_token.py` |
 
-## Chalane ke tareeke
-```powershell
-python scripts\agent.py                    # dry-run, output\preview.html banega
-python scripts\agent.py --day friday       # kisi aur din ka calculator test
-python scripts\agent.py --mode draft       # Blogger par draft
-python scripts\agent.py --mode publish     # Blogger par live
+Enable the **Blogger API v3** in Google Cloud and add your Gmail as a **Test user** on the OAuth consent screen.
+
+## Usage
+
+```bash
+python scripts/agent.py                    # dry run, creates output/preview.html
+python scripts/agent.py --day friday       # test another day's calculator
+python scripts/agent.py --mode draft       # save as a draft on Blogger
+python scripts/agent.py --mode publish     # publish live on Blogger
 ```
 
-## GitHub Actions
-1. Repo -> Settings -> Secrets and variables -> Actions -> New repository secret.
-   Ye 7 secrets banao: `GROQ_API_KEY, SERPAPI_KEY, PIXABAY_API_KEY, BLOG_ID,
-   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN`
-2. Repo -> Settings -> Actions -> General -> Workflow permissions -> **Read and write permissions**.
-3. Actions tab -> "Daily Blog Post" -> Run workflow -> mode `dry-run` (test), phir `draft`, phir `publish`.
-4. Schedule: `.github/workflows/blog.yml` mein cron (UTC). `30 2 * * *` = subah 8:00 IST.
+## Deploying with GitHub Actions
+
+1. Go to **Settings → Secrets and variables → Actions** and add these repository secrets:
+   `GROQ_API_KEY`, `SERPAPI_KEY`, `PIXABAY_API_KEY`, `BLOG_ID`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`
+2. Go to **Settings → Actions → General → Workflow permissions** and select **Read and write permissions**.
+3. Open the **Actions** tab, choose the daily blog workflow, and use **Run workflow** to test (dry run first, then draft, then publish).
+4. The schedule is defined in `.github/workflows/` using a cron expression (UTC).
+
+> **Security note:** never commit API keys or tokens. Keep all secrets in GitHub Secrets or a local `.env` file (which is git-ignored).
 
 ## Troubleshooting
-- **403 on Blogger post**: Blogger API enable nahi hai, ya Gmail Test user mein nahi hai, ya woh Gmail us blog ka owner/admin nahi hai, ya BLOG_ID galat hai. Sabse pehle `--mode draft` se test karo.
-- **invalid_grant**: refresh token expire/revoke hua. `get_refresh_token.py` dobara chalao (OAuth app "Testing" mode mein token 7 din mein expire ho sakta hai; consent screen ko "In production" kar do).
-- **Groq 429**: rate limit. Thodi der baad dobara ya model badlo (`config.json` -> `groq_model`).
+
+- **403 on Blogger post**: the Blogger API is not enabled, your Gmail is not added as a Test user, the account is not the blog owner/admin, or `BLOG_ID` is wrong. Test with `--mode draft` first.
+- **`invalid_grant`**: the refresh token expired or was revoked. Run `get_refresh_token.py` again. Moving the OAuth consent screen to "In production" avoids the 7-day expiry of Testing mode.
+- **Groq 429**: rate limit reached. Wait a while or change the model in `config.json` (`groq_model`).
+- **Images not showing on the blog**: make sure this repository is public, since the images are served from it through jsDelivr.
+
+## Author
+
+**Neelam Dhiman**
+GitHub: [Neelam7590](https://github.com/Neelam7590) · LinkedIn: [neelam-dhiman](https://linkedin.com/in/neelam-dhiman-b5a8b4422)
