@@ -151,6 +151,14 @@
       "title": "Understanding BMI for Indian Teenagers: Track Growth & Health",
       "mode": "publish",
       "url": "https://calcnotebook.blogspot.com/2026/10/understanding-bmi-for-indian-teenagers.html"
+    },
+    {
+      "date": "2026-10-29",
+      "calculator": "Percentage Calculator",
+      "topic": "How to calculate the percentage of weight you need to lose to reach your target weight",
+      "title": "Calculate Your Weight Loss Percentage with a Simple Calculator",
+      "mode": "publish",
+      "url": "https://calcnotebook.blogspot.com/2026/10/calculate-your-weight-loss-percentage.html"
     }
   ],
   "used_image_ids": [
@@ -172,6 +180,7 @@
     5612441,
     1867187,
     507695,
-    403585
+    403585,
+    7887696
   ]
 }
