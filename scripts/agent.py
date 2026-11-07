@@ -282,7 +282,12 @@ def main():
     post = write_post(cfg, calc, topic)
     body = ensure_backlink(cfg, calc, post["html"])
 
-    image = fetch_pixabay_image(post["image_query"], state.get("used_image_ids", []))
+    used = state.get("used_image_ids", [])
+    image = fetch_pixabay_image(post["image_query"], used)
+    if not image:
+        # Pehli query se na mile to ek simple safe query se dobara try
+        log("Pehli query se image nahi mili, fallback query try kar rahe hain.")
+        image = fetch_pixabay_image("calculator finance desk", used)
     body = add_pixabay_image(body, image, post["title"])
 
     labels = list(dict.fromkeys([calc["name"], "Calculators"] + post["labels"]))[:5]

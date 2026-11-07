@@ -16,6 +16,7 @@ Akele test karne ke liye:
 import html
 import os
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -25,10 +26,52 @@ ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
 IMAGES_DIR = ROOT / "images"
+PIXABAY_API = "https://pixabay.com/api/"
 
 
 def _log(msg):
     print(f"[image] {msg}", flush=True)
+
+
+def _get(url, params=None, timeout=45, retries=3):
+    """GET request with retries. Pixabay kabhi kabhi slow hota hai, isliye 3 try."""
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.get(url, params=params, timeout=timeout)
+            r.raise_for_status()
+            return r
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            _log(f"try {attempt}/{retries} fail: {e}")
+            if attempt < retries:
+                time.sleep(3 * attempt)
+    raise last_err
+
+
+def _save_hit(hit):
+    """Ek Pixabay photo download karke blog ke liye zaruri details return karta hai."""
+    # Pixabay hotlinking allow nahi karta, isliye download karte hain
+    img = _get(hit["largeImageURL"], timeout=60, retries=2)
+    IMAGES_DIR.mkdir(exist_ok=True)
+    filename = f"{hit['id']}.jpg"
+    (IMAGES_DIR / filename).write_bytes(img.content)
+
+    repo = os.getenv("IMAGE_REPO", "").strip() or os.getenv("GITHUB_REPOSITORY", "")
+    if repo:
+        public_url = f"https://cdn.jsdelivr.net/gh/{repo}@main/images/{filename}"
+    else:
+        _log("IMAGE_REPO set nahi hai, Pixabay ka seedha link use ho raha hai "
+             "(ye kuch ghante mein toot sakta hai).")
+        public_url = hit["largeImageURL"]
+
+    _log(f"Image mili: {filename}")
+    return {
+        "id": hit["id"],
+        "url": public_url,
+        "photographer": hit.get("user", "Pixabay"),
+        "page": hit["pageURL"],
+    }
 
 
 def fetch_image(query, used_ids=None):
@@ -43,8 +86,8 @@ def fetch_image(query, used_ids=None):
         return None
 
     try:
-        r = requests.get(
-            "https://pixabay.com/api/",
+        r = _get(
+            PIXABAY_API,
             params={
                 "key": key,
                 "q": query,
@@ -53,9 +96,9 @@ def fetch_image(query, used_ids=None):
                 "safe_search": "true",
                 "per_page": 20,
             },
-            timeout=30,
+            timeout=45,
+            retries=3,
         )
-        r.raise_for_status()
         hits = r.json().get("hits", [])
         if not hits:
             _log(f"'{query}' ke liye koi image nahi mili.")
@@ -64,34 +107,35 @@ def fetch_image(query, used_ids=None):
         for hit in hits:
             if hit["id"] in used_ids:
                 continue
-
-            # Pixabay hotlinking allow nahi karta, isliye download karte hain
-            img = requests.get(hit["largeImageURL"], timeout=60)
-            img.raise_for_status()
-            IMAGES_DIR.mkdir(exist_ok=True)
-            filename = f"{hit['id']}.jpg"
-            (IMAGES_DIR / filename).write_bytes(img.content)
-
-            repo = os.getenv("IMAGE_REPO", "").strip() or os.getenv("GITHUB_REPOSITORY", "")
-            if repo:
-                public_url = f"https://cdn.jsdelivr.net/gh/{repo}@main/images/{filename}"
-            else:
-                _log("IMAGE_REPO set nahi hai, Pixabay ka seedha link use ho raha hai "
-                     "(ye kuch ghante mein toot sakta hai).")
-                public_url = hit["largeImageURL"]
-
-            _log(f"Image mili: {filename}")
-            return {
-                "id": hit["id"],
-                "url": public_url,
-                "photographer": hit.get("user", "Pixabay"),
-                "page": hit["pageURL"],
-            }
+            try:
+                return _save_hit(hit)
+            except Exception as e:  # noqa: BLE001
+                # Ek image download fail ho to agli try karo (poora function fail nahi)
+                _log(f"Image {hit['id']} download fail ({e}), agli try kar rahe hain.")
 
         _log("Saari images pehle use ho chuki hain.")
     except Exception as e:  # noqa: BLE001
         _log(f"Pixabay fail ({e}), bina image ke aage badh rahe hain.")
     return None
+
+
+def fetch_image_by_id(image_id):
+    """Pixabay id se exact wahi image laata hai (purani tooti post repair ke liye)."""
+    key = os.getenv("PIXABAY_API_KEY", "").strip()
+    if not key:
+        _log("PIXABAY_API_KEY nahi hai, image skip.")
+        return None
+    try:
+        r = _get(PIXABAY_API, params={"key": key, "id": image_id},
+                 timeout=45, retries=3)
+        hits = r.json().get("hits", [])
+        if not hits:
+            _log(f"Pixabay id {image_id} nahi mili.")
+            return None
+        return _save_hit(hits[0])
+    except Exception as e:  # noqa: BLE001
+        _log(f"Pixabay id {image_id} fail ({e}).")
+        return None
 
 
 def add_image(body, image, title):

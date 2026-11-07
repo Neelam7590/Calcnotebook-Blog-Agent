@@ -1,0 +1,78 @@
+name: Repair Missing Images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: blog-agent
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Repair old posts
+        env:
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          BLOG_ID: ${{ secrets.BLOG_ID }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+        run: python scripts/repair_images.py
+
+      - name: Save state.json and images
+        if: always()
+        run: |
+          git config user.name "blog-agent"
+          git config user.email "blog-agent@users.noreply.github.com"
+          git add state.json images/
+          if git diff --cached --quiet; then
+            echo "Kuch naya nahi hai."
+            exit 0
+          fi
+          git diff --cached --name-only -- images/ > /tmp/purge-images.txt
+          git commit -m "fix: repair missing post images [skip ci]"
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git pull --rebase && git push; then
+              pushed=1
+              echo "Push ho gaya (attempt $i)."
+              break
+            fi
+            echo "Push fail (attempt $i), retry kar rahe hain..."
+            sleep $((i * 10))
+          done
+          if [ "$pushed" != "1" ]; then
+            echo "ERROR: 5 retries ke baad bhi push fail."
+            exit 1
+          fi
+
+      - name: Purge jsDelivr cache for repaired images
+        if: always()
+        run: |
+          if [ ! -f /tmp/purge-images.txt ]; then
+            echo "No new images to purge."
+            exit 0
+          fi
+          while read -r f; do
+            [ -z "$f" ] && continue
+            NAME=$(basename "$f")
+            echo "Purging jsDelivr cache: $NAME"
+            for i in 1 2 3; do
+              curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/images/$NAME" && break
+              sleep 5
+            done
+            echo
+          done < /tmp/purge-images.txt
