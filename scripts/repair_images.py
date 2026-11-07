@@ -51,7 +51,7 @@ def find_post(service, blog_id, url):
     """Blogger par URL se post dhoondta hai (saare pages check karta hai)."""
     token = None
     while True:
-        params = {"blogId": blog_id, "maxResults": 100, "status": "live"}
+        params = {"blogId": blog_id, "maxResults": 100, "status": "LIVE"}
         if token:
             params["pageToken"] = token
         res = service.posts().list(**params).execute()
